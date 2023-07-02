@@ -1,16 +1,4 @@
-~ leaves > make sure its planned preinformed 
-    - leave required ? > email to rajeshwari and keka portal
 
-
-day-to-day=credentials = {
-
-    IT_email                    :   corpit-hyd@paysafe.com
-    my_email                    :   tushar.malhan@paysafe.com
-    gitlab_pass                 :   Oauth@2023
-    tushar.malhan@arisegs.com   :   Arise@21                  # KEKA portal 
-    tushar.malhan@paysafe.com   :   Paysafe@21                # Paysafe email
-
-}
 
 windows multiple commands
   at once =  git add .; git commit -m "[GDEA-199] modified error"; git push -f origin test
@@ -35,7 +23,7 @@ Types of releases =>
     
     | Each zone account has its own account id |
 
-    1.  netbanx-yellow --------> non prod 291925875877, prod 195255969266 , qa 425904413889 
+    1.  netbanx-yellow --------> non prod 291925875877, prod 195255969266 
     2.  edl2-   grey   --------> non prod 332318758586, prod 245535966659 
     3.  edl1-   blue   --------> non prod 550629512586, prod 452253236614
 
@@ -67,37 +55,6 @@ NEW CICD code implemenatation based on release type - the changes needs to be ma
         }
       }    
 
-All tickets that  needed to be approved
-
-    Select a role:
-    Account: netbanx-analytics-non-prod (291925875877) 
-    ADFS-PowerAdmin
-    Account: netbanx-analytics-prod (195255969266)
-    ADFS-AthenaReadOnly
-    Account: netbanx-analytics-qa (425904413889)  X
-    ADFS-PowerAdmin
-    Account: paysafe-edl-1-non-prod (550629512586) 
-    ADFS-PowerAdmin
-    Account: paysafe-edl-1-prod (452253236614) 
-    ADFS-AthenaReadOnly
-    Account: paysafe-edl-2-non-prod (332318758586)
-    ADFS-PowerAdmin
-    Account: paysafe-edl-2-prod (245535966659) X
-    ADFS-AthenaReadOnly
-    Account: paysafe-nimbus-sandbox (541292993345) 
-    ADFS-PowerAdmin
-    Account: paysafe-rnd-sandbox (533263886719)  X
-    ADFS-PowerAdmin
-    Account: paysafe-shared-services (765683906439)
-    ADFS-CICD-DeveloperRole
-    ADFS-SS-CodeSuite-User
-    Account: unity-application-non-prod (808046016961) X
-    ADFS-PowerAdmin
-    Account: 070314557418
-    ADFS-PowerAdmin
-    Account: 171838528413
-    ADFS-PowerAdmin
-
 Add ssh key to gitlab
     
     - ssh-keygen -t ed25519 -C "tusharmalhan@gmail.com"
@@ -111,5 +68,5 @@ Add ssh key to gitlab
     - add to ssh gitlab 
       https://gitlab.com/-/profile/keys
       
-    - git clone git@gitlab.paysafe.cloud:paysafe/corporate/infrastructure-and-cloud/dataops/paysafe-upf-dataops-lambda-alertprocessor.git
+    - git clone <git_url>
 
