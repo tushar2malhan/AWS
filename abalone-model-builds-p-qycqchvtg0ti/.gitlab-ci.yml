@@ -1,0 +1,72 @@
+image: python:latest
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V 
+  - pip install virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+
+stages:
+  - training
+  - batch-transform
+
+train-model:
+  stage: training
+  tags:
+    - financial crime datascience
+    - datascience
+  # when: manual
+  script: 
+      - pip install --upgrade --force-reinstall . "awscli>1.20.30" "sagemaker>=2.15.0"
+      - pip install --upgrade sagemaker
+      - pip install fsspec s3fs
+      - pip install --upgrade botocore
+      - pip show botocore
+      - pip install lightgbm
+      - pip show lightgbm
+      - python -c "import sagemaker; print(sagemaker.__version__)"
+      - export AWS_DEFAULT_REGION="${AWS_REGION}"
+      - export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+      - export PYTHONUNBUFFERED=TRUE
+      - export SAGEMAKER_PROJECT_NAME_ID="${SAGEMAKER_PROJECT_NAME}-${SAGEMAKER_PROJECT_ID}"
+      - aws sts get-caller-identity 
+      - |
+        cd $CI_PROJECT_DIR
+        run-pipeline --module-name pipelines.project.pipeline \
+          --role-arn $SAGEMAKER_PIPELINE_ROLE_ARN \
+          --tags "[{\"Key\":\"sagemaker:project-name\", \"Value\":\"${SAGEMAKER_PROJECT_NAME}\"}, {\"Key\":\"sagemaker:project-id\", \"Value\":\"${SAGEMAKER_PROJECT_ID}\"}]" \
+          --kwargs "{\"region\":\"${AWS_REGION}\",\"sagemaker_project_arn\":\"${SAGEMAKER_PROJECT_ARN}\",\"role\":\"${SAGEMAKER_PIPELINE_ROLE_ARN}\",\"default_bucket\":\"${ARTIFACT_BUCKET}\",\"pipeline_name\":\"${SAGEMAKER_PROJECT_NAME_ID}\",\"model_package_group_name\":\"${SAGEMAKER_PROJECT_NAME_ID}\",\"base_job_prefix\":\"${SAGEMAKER_PROJECT_NAME_ID}\"}"
+      - echo "Create/Update of the SageMaker Pipeline and execution completed."
+
+batch-transform:
+  stage: batch-transform
+  tags:
+    - financial crime datascience
+    - datascience
+  when: manual
+  script:
+    - pip install --upgrade --force-reinstall . "awscli>1.20.30" "sagemaker>=2.15.0"
+    - pip install --upgrade sagemaker
+    - pip install lightgbm
+    - python -c "import sagemaker; print(sagemaker.__version__)"
+    - export AWS_DEFAULT_REGION="${AWS_REGION}"
+    - export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+    - export PYTHONUNBUFFERED=TRUE
+    - export SAGEMAKER_PROJECT_NAME_ID="${SAGEMAKER_PROJECT_NAME}-${SAGEMAKER_PROJECT_ID}"
+    - aws sts get-caller-identity
+    - |
+        run-batch-pipeline --module-name batch.project.pipeline \
+          --role-arn $SAGEMAKER_PIPELINE_ROLE_ARN \
+          --tags "[{\"Key\":\"sagemaker:project-name\", \"Value\":\"${SAGEMAKER_PROJECT_NAME}\"}, {\"Key\":\"sagemaker:project-id\", \"Value\":\"${SAGEMAKER_PROJECT_ID}\"}]" \
+          --kwargs "{\"region\":\"${AWS_REGION}\",\"sagemaker_project_arn\":\"${SAGEMAKER_PROJECT_ARN}\",\"role\":\"${SAGEMAKER_PIPELINE_ROLE_ARN}\",\"default_bucket\":\"${ARTIFACT_BUCKET}\",\"pipeline_name\":\"${SAGEMAKER_PROJECT_NAME_ID}\",\"model_package_group_name\":\"${SAGEMAKER_PROJECT_NAME_ID}\",\"base_job_prefix\":\"${SAGEMAKER_PROJECT_NAME_ID}\"}"
+    - echo "Create/Update of the SageMaker Pipeline and execution completed."
+    - echo "Batch transformation completed."
+  

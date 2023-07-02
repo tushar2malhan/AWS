@@ -1,0 +1,20 @@
+module "lambda_builder" {
+  source                    = "../../../modules/lambda/grey-account"
+  function_name             = "Paysafe-upf-dataops-emrEventsDetails-grey"
+  region                    = "ca-central-1"
+  python_file               = "../../../modules/lambda/grey-account/lambda_function_grey.py"
+  handler                   = "lambda_function_grey.lambda_handler"
+  runtime                   = "python3.8"
+  output_path               = "../../../modules/lambda/grey-account/lambda_function_grey.zip"
+  iam_policy_name_kinesis   = "Paysafe-upf-dataops-aws-Kinesis-put-policy-grey"    
+  iam_policy_name_asssume   = "Paysafe-upf-dataops-aws-Assume-role-policy-grey"    
+  iam_role_name             = "Paysafe-upf-dataops-Emr-detail-iam-role-grey"
+  event_rule_name           = "Paysafe-upf-dataops-emr-detail-rule-grey"
+  lambda_timeout            = "300"
+  account_id                = "332318758586"
+  grey_account_id           = "332318758586"
+  blue_account_id           = "550629512586"
+  cross_account_id          = "550629512586"
+  config_file_key           = "paysafe-upf-dataops-lambda-emr-details-audit-trail/prep/grey/flag-execute-lambda.json"  
+}
+

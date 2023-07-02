@@ -1,0 +1,138 @@
+
+INPUT -> to be saved in dynamodb
+
+
+	{"version":"0","id":"3a97e6ce-2bd8-55a1-334a-3b762467c272",
+	"detail-type":"EMR Step Status Change","source":"aws.emr",
+	"account":"541292993345","time":"2023-01-23T00:18:14Z",
+	"region":"ca-central-1","resources":[],
+	"detail":{"severity":"INFO","actionOnFailure":"CONTINUE",
+	"stepId":"s-2IJ2J7L9705X8","name":"EMR-dev-pregenerated-reports-blue-CustomMetricInstallationStep",
+	"clusterId":"j-2JFPIF6RL66B6","state":"COMPLETED",
+	"message":"Step s-2IJ2J7L9705X8 (EMR-dev-pregenerated-repo...) in Amazon EMR cluster j-2JFPIF6RL66B6 (EMR-dev-blue-pregenerated...) completed execution at 2023-01-23 00:18 UTC. The step started running at 2023-01-23 00:14 UTC and took 3 minutes to complete."}}
+	
+iam policy 
+	
+	{
+		"Version": "2012-10-17",
+		"Statement": [
+			{
+				"Effect": "Allow",
+				"Action": [
+					"dynamodb:PutItem"
+				],
+				"Resource": [
+					"arn:aws:dynamodb:ca-central-1:541292993345:table/sparkjobs-notifier-dynamodb-table"
+				]
+			}
+		]
+	}
+
+iam role 
+	
+	{
+	  "Version": "2012-10-17",
+	  "Statement": [
+		{
+		  "Effect": "Allow",
+		  "Principal": {
+			"Service": "lambda.amazonaws.com"
+		  },
+		  "Action": "sts:AssumeRole"
+		}
+	  ]
+	}
+	
+table creation for dynamo db
+
+	import boto3
+
+	def lambda_handler(event, context):
+			
+		dynamodb = boto3.resource('dynamodb')
+		
+		table = dynamodb.create_table(
+			TableName='sparkjob-notifier-dynamodb-table',
+			KeySchema=[
+				{
+					'AttributeName': 'id',
+					'KeyType': 'HASH'
+				}
+			],
+			AttributeDefinitions=[
+				{
+					'AttributeName': 'id',
+					'AttributeType': 'S'
+				}
+			],
+			ProvisionedThroughput={
+				'ReadCapacityUnits': 5,
+				'WriteCapacityUnits': 5
+			}
+		)
+		
+		print("Table status:", table.table_status)
+
+lambda function to insert record in dynamodb table ===  table_insertion in dynamo
+
+	import boto3
+
+	def lambda_handler(event, context):
+		# Get the dynamodb resource
+		dynamodb = boto3.resource('dynamodb')
+		# Get the table
+		table = dynamodb.Table('sparkjob-notifier-dynamodb-table')
+		# Put the item into the table
+
+		id = event.get('id', 'no id')
+		account = event.get('account', 'no account')
+		state = event['detail'].get('state', 'no state')
+		name = event['detail'].get('crawlerName', 'no name')
+		detail_type = event.get('detail-type', 'no detail-type')
+		clusterId = event['detail'].get('clusterId', 'no clusterId')
+		
+		
+		item = table.put_item(
+			Item={
+				'id': id ,
+				'account': account,
+				'state': state,
+				'name': name,
+				'detail-type': detail_type ,
+				'clusterId': clusterId
+			}
+		)
+		
+		print( ('SPARK JOB EVENT ',event), "id: " + str(id) + ", account: " + str(account) + ", state: " + str(state) + 
+		", name: " + str(name) + ", detail-type: " + str(detail_type) + ", clusterId: " + str(clusterId),
+		"Record inserted successfully!")
+		
+		
+    id = event.get('id', 'no id')
+    account = event.get('account', 'no account')
+    state = state = event['detail'].get('state') if event['detail'].get('state') \
+    else event['detail'].get('currentState','no state or currentState avialable')
+    name = event['detail'].get('crawlerName', 'no name')
+    detail_type = event.get('detail-type', 'no detail-type')
+    clusterId = event['detail'].get('clusterId', 'no clusterId')
+	message = event['detail'].get('message','no message found')
+
+summary to capture userDetails from cloudtrail for emr tasks
+
+	[ storing logs of emr jobs generated from eventbridge rule to dynamo db	]
+	- directly there is no target to store the logs via eventbridge rule
+	- creating or using ur lambda function to set the target to dynamo db
+	- so we start with eventbridge rule for capturing all spark events , then we set the target 
+		to the lambda as second layer to be invoked , finally we can add destination to the dynamo db
+		( * good part, when setting destination target, iam role permissions added automatically ;) )
+		( but since we using boto3 api to call dynamo db , we need to add iam role permissions manually )
+	- here in dynamo db table schema is not followed before hand so just include the KeySchema and AttributeDefinitions with same column 
+	  and then we can add multiple different columns in same table 
+
+	||||||||||||||||||||||||||||||||||||||||||||||||||
+	- we can get user info for those emr tasks where 
+	detail-type = AWS API Call via CloudTrail
+	based on detail.userIdentity
+	
+	for other detail-type = we get relevant info , like start stop
+	

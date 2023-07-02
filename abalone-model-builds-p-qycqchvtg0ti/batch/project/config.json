@@ -1,0 +1,10 @@
+{
+    "JobName": "Abalone",
+    "processing_instance_count": 1,
+    "transform_instances_type": ["ml.m5.large"],
+    "input_path_batch_libsvm":"abalone.libsvm",
+    "BatchTransformer_Step_name":"Batch-Transformer",
+    "BatchPipeline_name":"Batch-Pipeline-",
+    "BatchCreateModel_step_name":"Batch-CreateModel"
+  }
+  

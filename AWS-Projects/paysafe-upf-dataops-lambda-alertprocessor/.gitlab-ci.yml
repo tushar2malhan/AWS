@@ -1,0 +1,84 @@
+variables:
+  AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+  AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+  AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+
+
+stages:
+  - test
+  - plan
+  - deploy
+
+
+## Hidden job to share common code
+.common:
+  image: 
+    name: "hashicorp/terraform:0.12.31"
+    entrypoint: [""]
+  before_script:
+    - echo " Terraform with CICD initialized .. "
+    - apk update && apk add make
+    - echo "from hidden scripts"
+    - ls -la
+    - make clean
+
+
+## testing scripts
+test:
+  stage: test
+  image: "python:latest"
+  before_script:
+    - pip install flake8 black
+    - apt-get update && apt-get install make
+    - echo " Finding Errors with flake8 and formatting with black "
+  script:
+    - make test
+  artifacts:
+    paths:
+      - code_errors.txt
+
+## Plan the changes
+plan:
+  extends: .common
+  stage: plan
+  script:
+    - make plan
+
+## Deploy to dev account
+deploy-dev:
+  extends: .common
+  stage: deploy
+  needs:
+    - test
+    - plan
+  script:
+    - make dev/deploy
+  environment: dev
+  when: manual
+
+# Deploy to prep ( blue ) account
+deploy-prep:     
+  extends: .common
+  stage: deploy
+  needs:
+    - test
+    - plan
+  script:
+    - make prep/deploy
+  allow_failure: false
+  when: manual
+
+# Deploy to Prod ( blue ) account
+deploy-prod:     
+  extends: .common
+  stage: deploy
+  needs:
+    - test
+    - plan
+  script:
+    - make prod/deploy
+  allow_failure: false
+  only:
+      - master
+  when: manual
+

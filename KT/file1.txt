@@ -1,0 +1,115 @@
+~ leaves > make sure its planned preinformed 
+    - leave required ? > email to rajeshwari and keka portal
+
+
+day-to-day=credentials = {
+
+    IT_email                    :   corpit-hyd@paysafe.com
+    my_email                    :   tushar.malhan@paysafe.com
+    gitlab_pass                 :   Oauth@2023
+    tushar.malhan@arisegs.com   :   Arise@21                  # KEKA portal 
+    tushar.malhan@paysafe.com   :   Paysafe@21                # Paysafe email
+
+}
+
+windows multiple commands
+  at once =  git add .; git commit -m "[GDEA-199] modified error"; git push -f origin test
+
+Types of releases =>
+
+    | dev > qa > prepod >| prod
+
+    - we have permission of read & write   uptil prepod only 
+
+    - so in console during prod release 
+    |    we cant create lambdas on UI , there we use Terraform 
+    - neither can u read secret access keys from Prod accounts
+
+    | Testing done via ci cd pipelines and not via terraform
+
+    | RAISE CR = need permission for credentials from any devops team - use service now to raise request
+
+    | usually we deploy in dev and for prep account zone is BLUE , if not specific to a particular zone
+    | for dev account id = 3345
+    | for prep account id == 2586 = prep ,blue
+    
+    | Each zone account has its own account id |
+
+    1.  netbanx-yellow --------> non prod 291925875877, prod 195255969266 , qa 425904413889 
+    2.  edl2-   grey   --------> non prod 332318758586, prod 245535966659 
+    3.  edl1-   blue   --------> non prod 550629512586, prod 452253236614
+
+NEW CICD code implemenatation based on release type - the changes needs to be made in gitlab repositories
+
+    = providers section : terraform backend : S3 : key in all enviornment 
+    - "mon-prep-blue/paysafe-upf-dataops-alert-dashboard/terraform.tfstate"
+      - should follow the prefix  
+      | == Paysafe-upf-dataops-<name>
+      |  <name>  ==  should be unique 
+    
+    - iam-policy resource number
+
+      provider "aws" {
+        region  = "ca-central-1"
+        assume_role {
+          role_arn     = "arn:aws:iam::<release_type-number>:role/paysafe-aws-unity-dataops-tf-deployer-role"
+          session_name = "bamboo-deployer"
+        }
+      }
+
+      terraform {
+        backend "s3" {
+          bucket         = "paysafe-unity-dataops-765683906439-ca-central-1-tf-states"
+          key            = "mon-<release_type_name like dev,prep,prod>-blue/<unique_name>/terraform.tfstate"
+          region         = "ca-central-1"
+          encrypt        = true
+          dynamodb_table = "unity-dataops-terraform-locks"
+        }
+      }    
+
+All tickets that  needed to be approved
+
+    Select a role:
+    Account: netbanx-analytics-non-prod (291925875877) 
+    ADFS-PowerAdmin
+    Account: netbanx-analytics-prod (195255969266)
+    ADFS-AthenaReadOnly
+    Account: netbanx-analytics-qa (425904413889)  X
+    ADFS-PowerAdmin
+    Account: paysafe-edl-1-non-prod (550629512586) 
+    ADFS-PowerAdmin
+    Account: paysafe-edl-1-prod (452253236614) 
+    ADFS-AthenaReadOnly
+    Account: paysafe-edl-2-non-prod (332318758586)
+    ADFS-PowerAdmin
+    Account: paysafe-edl-2-prod (245535966659) X
+    ADFS-AthenaReadOnly
+    Account: paysafe-nimbus-sandbox (541292993345) 
+    ADFS-PowerAdmin
+    Account: paysafe-rnd-sandbox (533263886719)  X
+    ADFS-PowerAdmin
+    Account: paysafe-shared-services (765683906439)
+    ADFS-CICD-DeveloperRole
+    ADFS-SS-CodeSuite-User
+    Account: unity-application-non-prod (808046016961) X
+    ADFS-PowerAdmin
+    Account: 070314557418
+    ADFS-PowerAdmin
+    Account: 171838528413
+    ADFS-PowerAdmin
+
+Add ssh key to gitlab
+    
+    - ssh-keygen -t ed25519 -C "tusharmalhan@gmail.com"
+
+    - ssh-keygen -t rsa -b 2048 -C "tusharmalhan@gmail.com"
+    
+    - # copy to clipboard in windows
+     cd C:\Users\tusharmalhan 
+     type .ssh\id_ed25519.pub | clip
+    
+    - add to ssh gitlab 
+      https://gitlab.com/-/profile/keys
+      
+    - git clone git@gitlab.paysafe.cloud:paysafe/corporate/infrastructure-and-cloud/dataops/paysafe-upf-dataops-lambda-alertprocessor.git
+

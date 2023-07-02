@@ -1,0 +1,359 @@
+
+LAMBDA
+
+    Lambda Code
+
+            {
+            "log_group_names": [
+                "dms-tasks-replica-instance"
+            ]
+            }
+
+            # input for fetching logs
+
+            import boto3
+
+            def lambda_handler(event, context):
+                cw_client = boto3.client('logs')
+                given_log_group_names = event.get('log_group_names')
+                log_events = []
+
+                log_groups = cw_client.describe_log_groups()
+                if not given_log_group_names:
+                    log_group_names = [group['logGroupName'] for group in log_groups['logGroups']][:1]
+                else:
+                    print('Processing for specific log groups ')
+                    log_group_names = [group['logGroupName'] for group in log_groups['logGroups'] if group['logGroupName'] in given_log_group_names ]
+                    # valid_log_group_names = []
+                    # for LogGroups in given_log_group_names:
+                    #     cw_client.describe_log_groups(logGroupNamePrefix=LogGroups)
+                    #     valid_log_group_names.append(LogGroups)
+                    #     log_group_names = valid_log_group_names
+                if not log_group_names:
+                    log_group_names = [group['logGroupName'] for group in log_groups['logGroups']][:1]
+
+                print('All log group names  ', log_group_names)
+                for log_group_name in log_group_names:
+                    log_streams = cw_client.describe_log_streams(logGroupName=log_group_name)
+                    
+                    for log_stream in log_streams['logStreams']:
+                        log_stream_name = log_stream['logStreamName']
+                        events = cw_client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name)
+                        
+                        for event in events['events']:
+                            event.update({'logGroupName': log_group_name, 'logStreamName': log_stream_name})
+                            message = event['message']
+                            timestamp = event['timestamp']
+                            if "error" in message.lower():
+                                print("### ERROR ###", message, timestamp)
+                            else:
+                                print(message, timestamp)
+                        
+                        log_events.append(events['events'])
+                
+                return log_events
+
+
+    Lambda code for company for alertdashboard
+
+        import json
+        import boto3
+
+
+        def lambda_handler(event, context):
+            client = boto3.client('logs')
+            try:
+                log_stream_name = event.get('detail').get('requestParameters').get('logStreamName')
+                log_group_name = event.get('detail').get('requestParameters').get('logGroupName')
+                logs = client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name)
+                logs['events'].append({'logGroupName ': log_group_name, 'logStreamName': log_stream_name})
+                print("Events: ", logs['events'])
+                print("Lambda Called")
+            except Exception as e:
+                print(f" Events: No Log events found = {e}")
+                return json.loads(json.dumps(f"No Log events found =>{e}"))
+            return event
+                    
+                    
+            
+            
+                # logs = client.get_log_events(
+                #     logGroupName=log_group_name,
+                #     logStreamName=log_stream_name)
+                # logs['events'].append(
+                #     {'logGroupName ': log_group_name, 
+                #     'logStreamName': log_stream_name})
+                # print("Events: ", logs['events'])
+                # print("Lambda Initiated !")
+                # log_events.append(logs['events'])
+            
+            
+    Lambda code to read all queries executed from log insights query 
+
+
+        def lambda_handler(event, context):
+            import boto3
+            from datetime import datetime, timedelta
+            import json
+            import time
+
+            client = boto3.client('logs')
+
+            query = """fields @timestamp, action, httpRequest.clientIp, httpRequest.country, httpRequest.uri,
+            terminatingRuleId | sort @timestamp desc | LIMIT 5
+            """
+
+            log_group = 'aws-waf-logs-test'
+
+            start_query_response = client.start_query(
+                logGroupName=log_group,
+                startTime=int((datetime.today() - timedelta(hours=24)).timestamp()),
+                endTime=int(datetime.now().timestamp()),
+                queryString=query,
+            )
+
+            query_id = start_query_response['queryId']
+
+            response = None
+
+            while response is None or response['status'] == 'Running':
+                print('Waiting for query to complete ...')
+                time.sleep(1)
+                response = client.get_query_results(queryId=query_id)
+
+            response_string = str(response).replace("'", '"')
+            json_object = json.loads(response_string)
+
+            for counter, j_obj_results in enumerate(json_object["results"]):
+                print("Result #", counter+1)
+                for j_obj in j_obj_results:
+                    print("field:", j_obj['field'], "value:", j_obj['value'])
+
+            return {
+                'statusCode': 200,
+                'body': "Success"
+            }
+
+
+IAM   Trust Relationship
+
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }
+
+    "Principal" = specifies the trusted entities, such as AWS services, 
+                IAM users, or IAM roles, that are allowed to consume 
+                the role responsbilities and run
+
+
+Cloudfront
+
+    - Setup Your CloudFront Distribution for EC2 Origin
+	
+        create alb > attach load balancer to ec2 > cloudfront > select web distribution
+        
+        - created alb ( with vpc and subnet where ec2 is located )
+        > created target group ( added the ec2 server as listener )
+        > under listener added that target group where ec2 is added !
+        > added public subnet ( advance-pay-public-subnet-2 ) with cidr as 192.168.2.0/24
+        | with auto assign public ip address , added same route table in both subnets 
+        > added both the PUBLIC subnets as atleast 2 subnets are required to attach in ALB
+        | wait until instance state is healthy and alb provisioning is completed and status is Active !
+        | Issue - sg not set properly connected with alb > added port 80 and 443 from anywhere as source
+        
+        Q under target group, get the path for health check settings !?
+        | currently showing nginx page , located in   /usr/share/nginx/html.
+        > create cloudfront distribution > where origin domain is ALB
+        > rules under create distribution
+        | - viewer protcol policy to connect with both http and https 
+        | - using all edge locations for best performance
+        | - use default caching policy 
+        > create distribution >>> use domain name on browser to get that access !
+        | ( wait until last modified status is active !)
+        > cdn url = https://dgf0jfflabkvy.cloudfront.net
+        > alb url = http://cloudfront-dynamic-content-1165382469.us-east-1.elb.amazonaws.com/
+
+    - 
+	
+- backup of ec2 and db 
+
+	= advancepay backup of ec2 in north verginia created on 18 jan 2023
+
+    
+Projects
+
+    CROSS ACCOUNT SETUP 
+    
+        Step function logs >  log stream > event bridge rule to trigger > LAMBDA invoked 
+        > put logs into kinesis data stream > lambda MAIN consumer > dynamo db 
+
+        - step function logs generated from 3 different aws accounts, 
+        then rule triggers if log stream name starts with states to invoke 
+        lambda to consume logs and send to main lambda consumer hosted 
+        in single account and finally to push data in dynamodb_table
+
+        ### EVENT BRIDGE RULE 
+
+            {
+            "source": ["aws.logs"],
+            "detail-type": ["AWS API Call via CloudTrail"],
+            "detail": {
+                "eventName": ["CreateLogStream"],
+                "requestParameters": {
+                "logStreamName": [{
+                    "prefix": "states"
+                }]
+                }
+            }
+            }
+
+
+        ###### LAMBDA FUNCTION in all 3 aws accounts
+            import zlib
+            import base64
+            import json
+            import boto3
+            import uuid
+
+
+            # Create a CloudWatchLogs client
+            logs = boto3.client('logs')
+
+            def lambda_handler(event, context):
+                
+                
+                
+                # Extract log stream name and log events from the CloudTrail event
+                log_stream_name = event['detail']['requestParameters']['logStreamName']
+                log_group_name = event['detail']['requestParameters']['logGroupName']
+                print('Event > ',event)
+                print('log group name for above event is ', log_group_name, 'and log stream name is ',log_stream_name )
+
+                # Use the FilterLogEvents method to get all the log events from the log group and log stream
+                response = logs.filter_log_events(
+                    logGroupName=log_group_name,
+                    logStreamNames=[log_stream_name],
+                    interleaved=True
+                )
+
+                # Loop through each log event and send it to the Kinesis data stream "kinesis_data_stream_TEST"
+                for log_event in response['events']:
+                    message = log_event['message']
+                    print("Message Log: ", message)
+                    try:
+                        # Put the message in the Kinesis data stream
+                        kinesis = boto3.client('kinesis')
+                        response = kinesis.put_record(
+                            StreamName='kinesis_data_stream_TEST',
+                            Data=json.dumps(message),
+                            PartitionKey=str(uuid.uuid4())
+                        )
+                        print(f'Successfully sent message to Kinesis data stream. Response: {response}')
+                    except Exception as e:
+                        print(f'Error sending message to Kinesis data stream. Error: {e}')
+                        return e
+                return response
+
+
+        #### IAM ROLES
+
+            1. assumed role created in blue account for grey or yellow
+            - this rule needs to be referenced in yellow and grey account attached to lambda 
+
+            assumed in grey account, created in BLUE account having cloudwatch,kinesis, lambda execution full access
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Resource": "arn:aws:iam::550629512586:role/test_for_grey"
+                    }
+                ]
+            }
+
+
+            ROLE created in blue account 
+
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "kinesis:PutRecord",
+                        "Resource": "arn:aws:kinesis:ca-central-1:550629512586:stream/kinesis_data_stream_TEST"
+                    }
+                ]
+            }
+
+
+        ### MAIN Consumer LAMBDA FUNCTION
+            
+            gets invoked from kinesis data stream and push data to Dynamo db table 
+
+            import base64
+            import json
+            import boto3
+            import uuid
+            from datetime import datetime
+
+            def lambda_handler(event, context):
+                for record in event['Records']:
+                    # Kinesis data is base64 encoded so decode here
+                    payload = base64.b64decode(record["kinesis"]["data"])
+                    res = json.loads(payload)
+
+                    # generate a unique ID
+                    unique_id = str(uuid.uuid4())
+
+                    # Convert data to dictionary
+                    data = json.loads(res)
+
+                    # add the unique ID to the data as the primary key
+                    data["id"] = unique_id
+
+                    # get the current time
+                    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    
+                    print(data)
+                    # check if the data type is ExecutionStarted
+                    if data.get('type') == 'ExecutionStarted':
+                        # add start time and execution arn to data
+                        data['start_time'] = current_time
+                        data['execution_arn'] = data.get('execution_arn')
+                    
+                    if data.get('type') in ['ExecutionSucceeded', 'ExecutionFailed']:
+                        # add end time and execution arn to data
+                        data['end_time'] = current_time
+                        data['execution_arn'] = data.get('execution_arn')
+                        
+                        # add status based on type
+                        if data.get('type') == 'ExecutionSucceeded':
+                            data['status'] = 'Success'
+                        elif data.get('type') == 'ExecutionFailed':
+                            data['status'] = 'Failed'
+                    
+                    if "291925875877" in data.get('execution_arn', '').split(":"):
+                        data['Zone'] = 'Yellow'
+                    elif "332318758586" in data.get('execution_arn', '').split(":"):
+                        data['Zone'] = 'Grey'
+                    else:
+                        data['Zone'] = 'Blue'
+
+                    # remove the executionArn key from data as it's no longer needed
+                    # data.pop('execution_arn', None)
+
+                    dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
+                    table = dynamodb.Table("test-lambda-step-function-data-audit")
+                    table.put_item(Item=data)
+
+                    print("Object successfully stored in DB.", data)

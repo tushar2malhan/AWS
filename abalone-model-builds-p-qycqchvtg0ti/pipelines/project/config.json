@@ -1,0 +1,57 @@
+{
+    "processing_instance_type": "ml.m5.xlarge",
+    "processing_instance_count": 1,
+    "model_approval_status": "PendingManualApproval",
+    "training_instance_type": "ml.m5.xlarge",
+    "inference_instance_type": ["ml.t2.medium", "ml.m5.large"],
+    "transform_instances_type": ["ml.m5.large"],
+    "processing_step_name": "sklearn-abalone-preprocess",
+    "model_path_name": "AbaloneTrain",
+    "TrainingStepName": "TrainAbaloneModel",
+    "RegisterModel_name": "RegisterAbaloneModel",
+    "ModelCreation_name":"AbaloneCreateModel_",
+    "Transformer_name": "AbaloneTransformer_",
+    "CheckMSEEvaluation_name": "CheckMSEAbaloneEvaluation",
+    "step_evaluation_name": "script-abalone-eval",
+    "PreprocessData_name": "PreprocessAbaloneData",
+    "PipelineName": "AbalonePipeline",
+    "JobName": "Abalone",
+    "ModelPackageGroupName": "AbalonePackageGroup",
+    "input_data_csv_file":"abalone-dataset.csv",
+    "input_path_batch_libsvm":"abalone.libsvm",
+    "trained_model":"xgboost-model",
+    "sklearn_framework_version":"0.23-1",
+    "image_uri": {
+      "model_framework": "lightgbm",
+      "model_framework_version":"1.0-1",
+      "model_framework_py_version":"py3"
+    },
+    "estimator":{
+      "estimator_name": "abalone-train",
+      "estimator_objective":"reg:linear",
+      "estimator_num_round":50,
+      "estimator_max_depth":5,
+      "estimator_eta":0.2,
+      "estimator_gamma":4,
+      "estimator_min_child_weight":6,
+      "estimator_subsample":0.7,
+      "estimator_silent":0
+    },
+    "condition_step":{
+      "condition_step_right":6.0,
+      "condition_step_json_path":"regression_metrics.mse.value"
+    },
+    "batch_model":{
+      "batch_model_status":"Approved"
+    },
+    "Evaluation":{
+      "EvaluateModel_name": "EvaluateAbaloneModel",
+      "EvaluationReport_name": "AbaloneEvaluationReport",
+      "Evaluation_output_name":"evaluation",
+      "Evaluation_path":"evaluation.json"
+    },
+    "create_model_step_accelerator_type": "ml.eia1.medium",
+    "base_path":"/opt/ml/processing"
+
+  }
+  

@@ -1,0 +1,30 @@
+/bin/
+/.gradle/
+/build/
+/out/
+/.settings/
+/.classpath
+/.project
+/.idea
+/*.iml
+/*.ipr
+/*.iws
+/.apt_generated/
+/test-output/
+
+.idea
+
+**/.env
+**/a.js
+
+
+### Terraform Files ###
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+automation/terraform.tfstate
+automation/terraform.tfstate.backup
+automation/.terraform/
+
+### pycache ###
+__pycache__/
