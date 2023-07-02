@@ -1,12 +1,14 @@
-"""Example workflow pipeline script for the pipeline.
+"""
 
-                                               . -RegisterModel
-                                              .
-    Process-> Train -> Evaluate -> Condition .
-                                              .
-                                               . -(stop)
+        Description:  Ml Deployment on AWS for classification Model
+        Date:         1/06/2023
+        Status:       Done
+        Author:       Tushar Malhan
 
-Implements a get_pipeline(**kwargs) method.
+        Example workflow pipeline script for the pipeline.
+                                          
+        Process-> Train -> Evaluate -> Condition -> RegisterModel -> Batch Inference
+
 """
 import os
 import json
